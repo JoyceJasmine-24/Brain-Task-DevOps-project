@@ -1,91 +1,284 @@
-DevOps Practice Project – Dist Directory
+# Brain Tasks DevOps Deployment Project
 
-This repository contains the production-ready build files (dist folder) for DevOps practice and deployment exercises.
+## Project Overview
 
-It is intentionally structured to help learners focus on CI/CD pipelines, hosting, containerization, and infrastructure setup rather than application development.
+This project demonstrates the deployment of the Brain Tasks React application using DevOps practices and AWS cloud services.
 
-📁 What This Repository Contains
+The application was containerized using Docker, stored in AWS ECR, and deployed to AWS EKS using Kubernetes manifests.
 
-dist/ – Compiled and production-ready static files
+---
 
-HTML
+# Application Details
 
-CSS
+- Application Name: Brain Tasks
+- Frontend Framework: React
+- Containerization: Docker
+- Container Registry: AWS ECR
+- Kubernetes Platform: AWS EKS
+- CI/CD Tool: AWS CodeBuild
+- Version Control: GitHub
+- Monitoring: CloudWatch Logs
 
-JavaScript
+Repository Used:
+https://github.com/Vennilavanguvi/Brain-Tasks-App.git
 
-Assets (images, fonts, etc.)
+---
 
-These files are ready to deploy to:
+# Project Architecture
 
-Web servers (Nginx / Apache)
+GitHub Repository
+↓
+AWS CodeBuild
+↓
+Docker Build
+↓
+Push Image to AWS ECR
+↓
+Deploy to AWS EKS
+↓
+Access Application via LoadBalancer
 
-Cloud platforms (AWS S3, Azure Blob, GCP Storage)
+---
 
-Containerized environments (Docker + Nginx)
+# Step 1 — Clone Repository
 
-Kubernetes clusters
+```bash
+git clone https://github.com/Vennilavanguvi/Brain-Tasks-App.git
+cd Brain-Tasks-App
+```
 
-CI/CD pipeline demonstrations
+---
 
-🎯 Purpose of This Repository
+# Step 2 — Dockerize Application
 
-This repository is designed for:
+Created a Dockerfile for containerizing the React application.
 
-DevOps beginners
+## Dockerfile
 
-CI/CD practice
+```dockerfile
+FROM nginx:alpine
 
-Deployment pipeline testing
+COPY dist/ /usr/share/nginx/html
 
-Docker & Kubernetes deployment exercises
+EXPOSE 80
 
-Web server configuration practice
+CMD ["nginx", "-g", "daemon off;"]
+```
 
-Reverse proxy and load balancer setup
+---
 
-The goal is to simulate real-world deployment scenarios using already built application files.
+# Step 3 — Build Docker Image
 
-❓ Why is there NO package.json?
+```bash
+docker build -t brain-task-app .
+```
 
-You may notice that this repository does not include:
+Check Docker Images:
 
-package.json
+```bash
+docker images
+```
 
-node_modules
+---
 
-Source code (src/)
+# Step 4 — Create AWS ECR Repository
 
-Build tools configuration
+Created ECR repository named:
 
-✅ Reason:
+```text
+brain-task-app
+```
 
-This repository only contains the final production build output (dist), not the development source code.
+Login to ECR:
 
-In a typical project:
+```bash
+aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 145689194017.dkr.ecr.ap-south-1.amazonaws.com
+```
 
-Developers write source code.
+Tag Docker Image:
 
-The project is built using tools like:
+```bash
+docker tag brain-task-app:latest 145689194017.dkr.ecr.ap-south-1.amazonaws.com/brain-task-app:latest
+```
 
-Node.js
+Push Image to ECR:
 
-Webpack
+```bash
+docker push 145689194017.dkr.ecr.ap-south-1.amazonaws.com/brain-task-app:latest
+```
 
-Vite
+---
 
-React (or other frameworks)
+# Step 5 — Kubernetes Deployment
 
-A dist/ folder is generated.
+Created Kubernetes deployment and service YAML files.
 
-Only the production build is deployed to servers.
+## deployment.yaml
 
-This repository represents step 4 only.
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: brain-task-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: brain-task-app
+  template:
+    metadata:
+      labels:
+        app: brain-task-app
+    spec:
+      containers:
+      - name: brain-task-container
+        image: 145689194017.dkr.ecr.ap-south-1.amazonaws.com/brain-task-app:latest
+        ports:
+        - containerPort: 80
+```
 
-Since this is already the compiled output:
+---
 
-No dependencies are required
+## service.yaml
 
-No build process is required
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: brain-task-service
+spec:
+  selector:
+    app: brain-task-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+```
 
-No package.json is needed
+---
+
+# Step 6 — Deploy Application to EKS
+
+Apply Deployment:
+
+```bash
+kubectl apply -f deployment.yaml
+```
+
+Apply Service:
+
+```bash
+kubectl apply -f service.yaml
+```
+
+Check Pods:
+
+```bash
+kubectl get pods
+```
+
+Check Services:
+
+```bash
+kubectl get svc
+```
+
+---
+
+# Step 7 — CodeBuild Configuration
+
+Created buildspec.yml file for CI/CD automation.
+
+## buildspec.yml
+
+```yaml
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 145689194017.dkr.ecr.ap-south-1.amazonaws.com
+
+  build:
+    commands:
+      - docker build -t brain-task-app .
+      - docker tag brain-task-app:latest 145689194017.dkr.ecr.ap-south-1.amazonaws.com/brain-task-app:latest
+
+  post_build:
+    commands:
+      - docker push 145689194017.dkr.ecr.ap-south-1.amazonaws.com/brain-task-app:latest
+```
+
+---
+
+# Step 8 — Version Control
+
+Initialized Git repository and pushed code using CLI commands.
+
+```bash
+git init
+git add .
+git commit -m "DevOps project completed"
+git remote add origin https://github.com/JoyceJasmine-24/Brain-Task-DevOps-project.git
+git push -u origin main
+```
+
+---
+
+# Step 9 — Application Deployment URL
+
+Application successfully deployed using AWS EKS LoadBalancer.
+
+## LoadBalancer URL
+
+```text
+ab810a4d564a84efdb19d1af688d5ee5-1798423270.ap-south-1.elb.amazonaws.com
+```
+
+---
+
+# Monitoring
+
+AWS CloudWatch Logs used for:
+- Build monitoring
+- Deployment monitoring
+- Application monitoring
+
+---
+
+# Screenshots
+
+Project screenshots are available inside the Screenshots folder.
+
+Included Screenshots:
+- Git Clone
+- Docker Build
+- Docker Images
+- ECR Repository
+- Docker Push
+- Kubernetes Pods
+- Kubernetes Services
+- Running Application
+- CodeBuild Project
+- GitHub Repository
+
+---
+
+# Technologies Used
+
+- React
+- Docker
+- AWS ECR
+- AWS EKS
+- Kubernetes
+- AWS CodeBuild
+- GitHub
+- CloudWatch
+
+---
+
+# Project Status
+
+Project Successfully Completed ✅
